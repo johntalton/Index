@@ -26,7 +26,10 @@ class IndexView : public BView {
       void MakeIndexes();
       void MakeIndexes(int32);
    private:
+      status_t RemoveKey(BString);
+   
       int32 DeviceNumber;
+      int IndexType;
       
       BWindow *parentWindow;
       BBox *StatusBar;
@@ -43,5 +46,9 @@ class IndexView : public BView {
       
       BPopUpMenu *VolList;
       BMenuField *VolMenu;
+      
+      BPopUpMenu *TypeList;
+      BMenuField *TypeMenu;
+      
 };
 #endif

@@ -14,8 +14,9 @@
 
 #include "Globals.h"
 #include "IndexListView.h"
+#include "BugOutDef.h"
 
-
+extern BugOut db;
 
 /*******************************************************
 *   Setup the main view. Add in all the niffty components

@@ -15,7 +15,9 @@
 #include "Globals.h"
 #include "IndexWindow.h"
 #include "TPreferences.h"
+#include "BugOutDef.h"
 
+extern BugOut db;
 /*******************************************************
 *   Our wonderful BWindow, ya its kewl like that.
 *   we dont do much here but set up the menubar and 
@@ -50,7 +52,7 @@ IndexWindow::IndexWindow(BRect frame) : BWindow(frame,"Index  ",B_DOCUMENT_WINDO
    View = new IndexView(this,r);
    View->MoveBy(0, menubar->Bounds().Height() + 1);
    AddChild(View);
-   
+   db.SendMessage("About to show window");
    Show();
 }
 

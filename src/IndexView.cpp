@@ -22,7 +22,9 @@
 #include "Globals.h"
 #include "IndexView.h"
 #include "IndexListView.h"
+#include "BugOutDef.h"
 
+extern BugOut db;
 /*******************************************************
 *   Setup the main view. Add in all the niffty components
 *   we have made and get things rolling
@@ -32,6 +34,9 @@ IndexView::IndexView(BWindow *parentWin, BRect frame):BView(frame, "", B_FOLLOW_
    BRect b;
    b = Bounds();
    
+   db.SendMessage(BUG_MESSAGE,"IndexView init");
+   
+   IndexType = B_INT32_TYPE;
    parentWindow = parentWin;
    
    StatusBar = new BBox(BRect(b.left-3,b.bottom-14,b.right,b.bottom+3),"StatusBar",B_FOLLOW_LEFT_RIGHT|B_FOLLOW_BOTTOM); 
@@ -81,9 +86,26 @@ IndexView::IndexView(BWindow *parentWin, BRect frame):BView(frame, "", B_FOLLOW_
    BStringView *s1 = new BStringView(BRect(5,10,b.right-20,25),"","Should be in form MAJOR:minor");
    otherbox->AddChild(s1);
       
-   b.top += 40;
+   
+   TypeList = new BPopUpMenu("B_INT32_TYPE");
+   TypeList->AddItem(new BMenuItem("B_INT32_TYPE",new BMessage(B_INT32_TYPE)));
+   TypeList->AddItem(new BMenuItem("B_INT64_TYPE",new BMessage(B_INT64_TYPE)));
+   TypeList->AddItem(new BMenuItem("B_FLOAT_TYPE",new BMessage(B_FLOAT_TYPE)));
+   TypeList->AddItem(new BMenuItem("B_DOUBLE_TYPE",new BMessage(B_DOUBLE_TYPE)));
+   TypeList->AddItem(new BMenuItem("B_STRING_TYPE",new BMessage(B_STRING_TYPE)));
+   TypeList->AddItem(new BMenuItem("B_MIME_STRING_TYPE",new BMessage(B_MIME_STRING_TYPE)));
+   
+   //TypeList->AddItem(new BSeparatorItem());
+   
+   b.top += 30;
    b.left += 5;
    b.right -= 5 + 3; // why do we need +3 here - we shouldn't
+    
+   TypeMenu = new BMenuField(b,"","Index Type",TypeList);
+   otherbox->AddChild(TypeMenu);
+   
+   b.top += 30;
+  
    
    IndexName = new BTextControl(b,"IndexName","","",new BMessage(ADD_INDEX));
    IndexName->SetDivider(0);
@@ -141,7 +163,10 @@ void IndexView::AllAttached(){
    for(int32 i = 0;i < VolList->CountItems();i++){
       (VolList->ItemAt(i))->SetTarget(this);
    }
-   
+   for(int32 i = 0;i < TypeList->CountItems();i++){
+      (TypeList->ItemAt(i))->SetTarget(this);
+   }
+   db.SendMessage(BUG_WARNING,"just leting you know we are about to do real work");
    MakeIndexes();
 }
 
@@ -228,14 +253,15 @@ void IndexView::MakeIndexes(int32 device){
 *   command center of the app!
 *******************************************************/
 void IndexView::MessageReceived(BMessage *msg){
-   BStringItem *li;
-   BStringItem *si;
+   BStringItem *li = NULL;
+   BStringItem *si = NULL;
    BString key;
    bool found;
    BString MainName;
    BString MinorName;
    BString tmp;
    int32 foundAt;
+   bool isGroup;
    int32 answer;
    BStringItem *item = NULL;
    int32 i,j,k;
@@ -247,6 +273,14 @@ void IndexView::MessageReceived(BMessage *msg){
    BPath path;
    
    switch(msg->what){
+   case B_INT32_TYPE:
+   case B_INT64_TYPE:
+   case B_FLOAT_TYPE:
+   case B_DOUBLE_TYPE:
+   case B_STRING_TYPE:
+   case B_MIME_STRING_TYPE:
+      IndexType = msg->what;
+      break;
    case B_SIMPLE_DATA:
       if( msg->FindRef("refs", &ref) == B_OK ){
          entry.SetTo(&ref, true);
@@ -287,7 +321,7 @@ void IndexView::MessageReceived(BMessage *msg){
        /*DO REAL WORK HERE NOW*/
       printf("Add kew to Volume: %s\n",key.String());
       
-      errorNum = fs_create_index(DeviceNumber, key.String(), B_STRING_TYPE, 0);
+      errorNum = fs_create_index(DeviceNumber, key.String(), IndexType, 0);
       error = true;
       switch(errorNum){
       case B_BAD_VALUE:
@@ -336,84 +370,113 @@ void IndexView::MessageReceived(BMessage *msg){
       }
       break;
    case SUB_INDEX:
+      isGroup = false;
       answer = (new BAlert(NULL,"Warning deleteing a index means that you will no longer be able to use it as a search key. Be verry carfull","Cancel","Ok",NULL,B_WIDTH_AS_USUAL,B_STOP_ALERT))->Go();
-      if(answer == 1){
-         li = (BStringItem*)ollv->ItemAt(ollv->CurrentSelection());
-         if(li){
-            si = (BStringItem*)ollv->Superitem(li);
-            if(si){
-               MainName.SetTo(si->Text());
-               key.SetTo(MainName.String());
-               key.Append(":");
-               MinorName.SetTo(li->Text());
-               key.Append(MinorName.String());
+      if(answer != 1){ break; }
+      
+      li = (BStringItem*)ollv->ItemAt(ollv->CurrentSelection());
+      if(li){
+         si = (BStringItem*)ollv->Superitem(li);
+      }
+      if(si == NULL){
+         //then we are a group
+         isGroup = true;
+      }else{
+         // we are a sub key
+         isGroup = false;
+      }     
+      
+      // creat MainName. Always fill out the MainName
+      //   string so we can use it to find stuff.
+      //   if it is a group then fill out both      
+      if(isGroup){
+         tmp.SetTo(li->Text());
+         MainName.SetTo(li->Text());
+         MinorName.SetTo("");
+         key.SetTo(li->Text());
+      }else{
+         tmp.SetTo(li->Text());
+         MainName.SetTo(si->Text());
+         MinorName.SetTo(li->Text());
+         
+         // Creat full key
+         key.SetTo(MainName.String());
+         key.Append(":");
+         key.Append(MinorName.String());
+         
+      }
+      
+      
+      
+      // CHECK FOR SYSTEM KEY
+      // this is importante so tha we do not delete
+      // somethign that is needed by the system. Like I did when beta testing :(
+      if((key.ICompare("BEOS:APP_SIG") == 0) ||
+         (key.ICompare("BEOS") == 0) ||
+         (key.ICompare("last_modified") == 0) ||
+         (key.ICompare("name") == 0) ||
+         (key.ICompare("size") == 0) ||
+         (key.ICompare("_trk/qrylastchange") == 0) ||
+         (key.ICompare("_trk/recentQuery") == 0) ||
+         (key.ICompare("be:deskbar_item_status") == 0) ||
+         (key.ICompare("be") == 0)
+        ){
+         (new BAlert(NULL,"Ahh!\nThis key is a system key. Don't do that!","Oops"))->Go();
+         break;
+      }
+      
+      
+      // find where the item is
+      found = false;
+      foundAt = -1;
+      while((!found) && (foundAt < (ollv->CountItems()-1))){
+         item = (BStringItem*)ollv->ItemAt(++foundAt);
+         if(!tmp.Compare(item->Text())){
+            found = true;
+         }
+      }
+      
+      //make shur its in the list
+      if(!found){
+         // the item was not in the list. Oops thats not good.
+         (new BAlert(NULL,"ERROR:We did not find that Item in the list!","What?"))->Go();
+         break;
+      }
+      
+      // Ok so its in the list. its a group/or not and the user is shre, and its not a system key
+      
+      error = false;
+      if(isGroup){
+         i = ollv->IndexOf(li);
+         j = ollv->CountItemsUnder(li,true);
+         for(k = 0; k < j; k++){
+             item = (BStringItem*)ollv->ItemUnderAt(li,true,0);
+             tmp.SetTo(MainName.String());
+             tmp.Append(":");
+             tmp.Append(item->Text());
+             
+             if(RemoveKey(tmp) == B_OK){
+                ollv->RemoveItem(item);
+             }else{
+                error = true;
+                (new BAlert(NULL,"ERROR: Could not remove key","Ok"))->Go();
+             }
+         }
+         if(!error){
+            ollv->RemoveItem(li);
+         }
+      }else{
+         // do a real remove here 
+         if(RemoveKey(key) == B_OK){
+            j = ollv->CountItemsUnder(si,true);
+            if(j == 1){
+               ollv->RemoveItem(si);
             }else{
-               MainName.SetTo(li->Text());
-               key.Append(MainName.String());
-            }
-            found = false;
-            foundAt = -1;
-            while((!found) && (foundAt < (ItemCount-1))){
-               if(Items[++foundAt].name == MainName){
-                  found = true;
-               }
-            }
-            if(foundAt >= 0){
-               if(MinorName != ""){
-                  if((key.Compare("BEOS:APP_SIG") == 0) ||
-                     (key.Compare("last_modified") == 0) ||
-                     (key.Compare("name") == 0) ||
-                     (key.Compare("size") == 0)
-                    ){
-                     (new BAlert(NULL,"Ahh!\nThis key is a system key. Don't do that!","Oh"))->Go();
-                     break;
-                  }
-               
-                  /*DO REAL WORK HERE NOW*/
-                  printf("Removeing key from Volume: %s\n",key.String());
-                  errorNum = fs_remove_index(DeviceNumber,key.String());
-                  error = true;
-                  switch(errorNum){
-                  case B_FILE_ERROR:
-                     break;
-                  case B_BAD_VALUE:
-                     break;
-                  case B_NOT_ALLOWED:
-                     break;
-                  case B_NO_MEMORY:
-                     break;
-                  case B_ENTRY_NOT_FOUND:
-                     break;
-                  case B_OK:
-                     error = false;
-                     break;
-                  default:
-                     break;
-                  }
-                  /*END OF THE READ WORK */
-               
-                  if(!error){
-                     i = ollv->IndexOf(Items[foundAt].item);
-                     j = ollv->CountItemsUnder(Items[foundAt].item,true);
-                     i++;
-                     found = false;
-                     for(k = 0;k < j;k++){
-                        item = (BStringItem*)ollv->ItemAt(i);
-                        if((item->Text() == MinorName)){
-                           found = true;
-                           ollv->RemoveItem(item);
-                        }
-                        i++;
-                     }
-                  }
-               }else{
-                  (new BAlert(NULL,"Can not delete a whole group, mabey in next ver.","Oh"))->Go();
-               }
-            }else{
-               (new BAlert(NULL,"We did not find that Item in the list!","What?"))->Go();
+               ollv->RemoveItem(ollv->ItemAt(foundAt));
             }
          }else{
-            (new BAlert(NULL,"Seclect something fool","oh"))->Go();
+            error = true;
+            (new BAlert(NULL,"ERROR: Could not remove key","Ok"))->Go();
          }
       }
       break;
@@ -425,7 +488,19 @@ void IndexView::MessageReceived(BMessage *msg){
 }
 
 
-
+/*******************************************************
+*   
+*******************************************************/
+status_t IndexView::RemoveKey(BString key){
+      /*DO REAL WORK HERE NOW*/
+      
+      //printf("Removeing key from Volume: %s\n",key.String());
+      return fs_remove_index(DeviceNumber,key.String());
+      
+      /*END OF THE READ WORK */
+      //(new BAlert(NULL,key.String(),"Ok"))->Go();
+      //return B_OK;
+}
 
 
 

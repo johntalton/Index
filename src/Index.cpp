@@ -16,7 +16,9 @@
 #include "Index.h"
 #include "IndexWindow.h"
 #include "TPreferences.h"
+#include "BugOutDef.h"
 
+extern BugOut db;
 /*******************************************************
 *
 *******************************************************/

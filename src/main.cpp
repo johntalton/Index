@@ -9,7 +9,10 @@
 #include <KernelKit.h>
 
 #include "Index.h"
+#include "BugOutDef.h"
 
+// Gloable Debug Out
+BugOut db("Index");
 // Application's signature
 const char *APP_SIGNATURE = "application/x-vnd.Abstract-Index";
 
