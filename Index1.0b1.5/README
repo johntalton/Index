@@ -1,0 +1,48 @@
+Index (beta1.x)
+by YNOP
+
+Well, this is a niffty little app that add/removes and shows Indexs on your BeVolumes. It is prity much the same as lsindex/rmindex/mkindex but it is a GUI and its kewl, so use it and have fun.  
+
+This was originaly G_McLeods Idea. I coded it up. So if you though I was kewl and came up with this you are wroung. Though I am kewl .. I just code like a mad man. So if you have any questions about this app send them to me at ynop@acm.org. But dont forget to tell G_M thanks too.
+
+WARNING this program edits/adds/removes Indexs that are on your disk. I t can be verry usefull - but it can also desktroy some things. Becaufull .. I am NOT resopnsible if this app does not work as advertived nor am I resonsible if the app works as advertised. In other words "UAYOR"  (Use At Your Own Risk) 
+
+Ideas:
+	Copy indexs to dif volume
+	Drop file on and list its Indexs 
+	Restore/Save indexs (backup)
+	If volume roster changes while running we should update
+	Cros ref with file attributs ..
+
+Ver 1.0 Beta 1.5:
+	Fixed bug so that we are on the right device number.
+	Now you can chage the Volume you want to Index
+	Added some more error checking so you don't delete system indexs
+	Fixed some other little stuff
+Ver 1.0 Beta 1.4:
+	Added docs for coders to jump to BeBook C functions
+	Added a jump to my page thingy too
+Ver 1.0 Beta 1.3:
+	Added worker code
+	We now actauly write to the disk.
+Ver 1.0 Beta 1.2:
+	Tested the heck outa the GUI code seems to work rigth
+	I want to make shur GUI works befor actally messing with the BVolume
+	We canot delete a Main Group - for now I gess
+	If we dell all the items in a group. It does not auto go away but we can then del it
+	Added item remove
+	Added item add.
+	Everthing works in GUI now.
+	Just have to add the real remove/add code
+Ver 1.0 Beta 1.1:
+	Cleaned up alot of code.
+	Fixed up the GUI. 
+	Added in the add and remove buttons (no func though)
+	Lots of little stuff here and there
+Ver 1.0 Beta 1.0:
+ 	Ok ... uh .. it has a list of all the Indexes .. niffty list too :)
+
+YNOP
+ynop@acm.org  
+TheAbstractCompany
+http://www.latech.edu/~jta001/BeOS/index.html
